@@ -36,6 +36,7 @@ DECLARE_CLASS_CODEGEN(GorillaFriends, FriendButton, UnityEngine::MonoBehaviour,
     DECLARE_INSTANCE_METHOD(void, UpdateColor);
     DECLARE_INSTANCE_METHOD(void, OnTriggerEnter, UnityEngine::Collider* collider);
 
+    // c++ implementation, don't need these as c# types
     public:
     static Il2CppString* offText;
     static Il2CppString* onText;
