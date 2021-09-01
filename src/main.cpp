@@ -5,7 +5,6 @@
 #include "WebVerified.hpp"
 #include "FriendButton.hpp"
 
-#include "monkecomputer/shared/GorillaUI.hpp"
 #include "custom-types/shared/register.hpp"
 #include "custom-types/shared/coroutine.hpp"
 
@@ -28,6 +27,8 @@
 #include "Photon/Realtime/Player.hpp"
 #include "Photon/Pun/PhotonNetwork.hpp"
 
+#include "Logger.hpp"
+
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 
 // Loads the config from disk using our modInfo, then returns it for use
@@ -37,11 +38,14 @@ Configuration& getConfig() {
     return config;
 }
 
+/*
 // Returns a logger, useful for printing debug messages
 Logger& getLogger() {
     static Logger* logger = new Logger(modInfo);
+    myLogger = logger;
     return *logger;
 }
+*/
 
 // Called at the early stages of game loading
 extern "C" void setup(ModInfo& info) {
@@ -50,15 +54,16 @@ extern "C" void setup(ModInfo& info) {
     modInfo = info;
 	
     getConfig().Load(); // Load the config file
-    getLogger().info("Completed setup!");
+    Log::LoadLogger(modInfo);
+    Log::INFO("Completed setup!");
 }
 
 GorillaFriends::WebVerified* webVerified;
 
-MAKE_HOOK_OFFSETLESS(Player_start, void, GorillaLocomotion::Player* self)
+MAKE_HOOK_MATCH(Player_start, &GorillaLocomotion::Player::Awake, void, GorillaLocomotion::Player* self)
 {
     //GRAB LIST OF VERIFIED USER IDS
-    getLogger().info("Making WebVerified Object");
+   Log::INFO("Making WebVerified Object");
     auto go = UnityEngine::GameObject::New_ctor(il2cpp_utils::createcsstr("WebVerified"));
     webVerified = go->AddComponent<GorillaFriends::WebVerified*>();
     webVerified->StartCoroutine(reinterpret_cast<System::Collections::IEnumerator*>(custom_types::Helpers::CoroutineHelper::New(webVerified->GetVerifiedModders())));
@@ -67,10 +72,10 @@ MAKE_HOOK_OFFSETLESS(Player_start, void, GorillaLocomotion::Player* self)
 
 bool friendsInitialised = false;
 UnityEngine::GameObject* m_pScoreboardFriendBtn = nullptr;
-GorillaFriends::FriendButton* m_pFriendButtonController;
+GorillaFriends::FriendButton* m_pFriendButtonController = nullptr;
 
 
-MAKE_HOOK_OFFSETLESS(GSB_Awake, void, GlobalNamespace::GorillaScoreBoard* self)
+MAKE_HOOK_MATCH(GSB_Awake, &GlobalNamespace::GorillaScoreBoard::Awake, void, GlobalNamespace::GorillaScoreBoard* self)
 {
     if(m_pScoreboardFriendBtn != nullptr)
     {
@@ -80,15 +85,18 @@ MAKE_HOOK_OFFSETLESS(GSB_Awake, void, GlobalNamespace::GorillaScoreBoard* self)
     }
 	// I think we dont need it here:
     // GorillaFriends::WebVerified::m_listCurrentSessionFriends.clear();
-    getLogger().info("GSB_AWAKE");
+    Log::INFO("GSB_AWAKE");
     auto transform = self->scoreBoardLinePrefab->get_transform();
+    GlobalNamespace::GorillaPlayerScoreboardLine* parentLine = transform->get_gameObject()->GetComponent<GlobalNamespace::GorillaPlayerScoreboardLine*>();
+
     int transformNum = transform->get_childCount();
     for(int i = 0; i < transformNum; ++i)
     {
-        getLogger().info("ooga");
+        Log::INFO("ooga");
         auto t = transform->GetChild(i);
         if(to_utf8(csstrtostr(t->get_name())) == "Mute Button")
         {
+            Log::INFO("found mute button");
             m_pScoreboardFriendBtn = UnityEngine::GameObject::Instantiate(t->get_gameObject());
             if(m_pScoreboardFriendBtn != nullptr)
             {
@@ -100,14 +108,18 @@ MAKE_HOOK_OFFSETLESS(GSB_Awake, void, GlobalNamespace::GorillaScoreBoard* self)
                 if(controller != nullptr)
                 {
                     m_pFriendButtonController = m_pScoreboardFriendBtn->AddComponent<GorillaFriends::FriendButton*>();
-                    m_pFriendButtonController->parentLine = controller->parentLine;
+                    //m_pFriendButtonController->parentLine = controller->parentLine;
+                    m_pFriendButtonController->parentLine = parentLine;
                     m_pFriendButtonController->offText = il2cpp_utils::createcsstr("ADD\nFRIEND");
                     m_pFriendButtonController->onText = il2cpp_utils::createcsstr("FRIEND!");
+                    //m_pFriendButtonController->myText = controller->myText;
                     m_pFriendButtonController->myText = controller->myText;
                     m_pFriendButtonController->myText->set_text(m_pFriendButtonController->offText);
-                    m_pFriendButtonController->offMaterial = controller->offMaterial;
+                    //m_pFriendButtonController->offMaterial = controller->offMaterial;
+                    m_pFriendButtonController->offMaterial = controller->_get_offMaterial();
 					/* Maybe we need to instantiate onMaterial, please check */
-                    m_pFriendButtonController->onMaterial = controller->onMaterial;
+                    //m_pFriendButtonController->onMaterial = controller->onMaterial;
+                    m_pFriendButtonController->onMaterial = UnityEngine::Material::New_ctor(controller->_get_onMaterial());
                     m_pFriendButtonController->onMaterial->set_color(UnityEngine::Color(0.8f, 0.5f, 0.9f, 1.0f));
 
                     UnityEngine::GameObject::Destroy(controller);
@@ -117,27 +129,30 @@ MAKE_HOOK_OFFSETLESS(GSB_Awake, void, GlobalNamespace::GorillaScoreBoard* self)
 			break;
         }
     }
+
 	// Call original function
     GSB_Awake(self);
 }
 
-MAKE_HOOK_OFFSETLESS(PN_Disconnect, void, Photon::Pun::PhotonNetwork* self)
+MAKE_HOOK_MATCH(PN_Disconnect, &Photon::Pun::PhotonNetwork::Disconnect, void)
 {
     GorillaFriends::WebVerified::m_listCurrentSessionFriends.clear();
-    PN_Disconnect(self);
+    PN_Disconnect();
 }
 
 // Called later on in the game loading - a good time to install function hooks
 extern "C" void load() {
     il2cpp_functions::Init();
-    GorillaUI::Innit(); //bruv
+    
+    Log::INFO("Installing hookeroos");
 
-    custom_types::Register::RegisterType<GorillaFriends::WebVerified>();
-    custom_types::Register::RegisterType<GorillaFriends::FriendButton>();
+    Log::myLogger->info("hmm");
 
-    getLogger().info("Installing hookeroos");
-    INSTALL_HOOK_OFFSETLESS(getLogger(), Player_start, il2cpp_utils::FindMethodUnsafe("GorillaLocomotion", "Player", "Awake", 0));
-    INSTALL_HOOK_OFFSETLESS(getLogger(), GSB_Awake, il2cpp_utils::FindMethodUnsafe("", "GorillaScoreBoard", "Awake", 0));
-    INSTALL_HOOK_OFFSETLESS(getLogger(), PN_Disconnect, il2cpp_utils::FindMethodUnsafe("Photon.Pun", "PhotonNetwork", "Disconnect", 0));
-    getLogger().info("Installed all hooks!");
+    Logger& logger = Log::GetLogger();
+    INSTALL_HOOK(logger, Player_start);
+    INSTALL_HOOK(logger, GSB_Awake);
+    INSTALL_HOOK(logger, PN_Disconnect);
+
+    Log::INFO("registering custom types");
+    custom_types::Register::AutoRegister();
 }

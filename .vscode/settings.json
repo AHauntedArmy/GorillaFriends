@@ -114,6 +114,9 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "*.tcc": "cpp",
-        "memory_resource": "cpp"
-    }
+        "memory_resource": "cpp",
+        "format": "cpp",
+        "stop_token": "cpp"
+    },
+    "cmake.configureOnOpen": false
 }
