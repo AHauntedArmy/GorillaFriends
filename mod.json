@@ -4,7 +4,7 @@
     "name": "Gorilla Friends",
     "id": "gorillafriends",
     "author": "AHauntedArmy",
-    "version": "0.1.0",
+    "version": "1.0.1",
     "packageId": "com.AnotherAxiom.GorillaTag",
     "packageVersion": "1.0.11",
     "description": "Gorilla Friends port for quest. (orginally ported by BoopetyDoopety)",
@@ -12,7 +12,8 @@
         "libgorillafriends.so"
     ],
     "libraryFiles": [
-        "libbeatsaber-hook_2_2_5.so"
+        "libbeatsaber-hook_2_3_0.so",
+        "libcustom-types.so"
     ],
     "dependencies": [
         {

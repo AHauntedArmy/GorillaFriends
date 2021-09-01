@@ -25,12 +25,12 @@ namespace GorillaFriends{
 
     custom_types::Helpers::Coroutine GorillaFriends::WebVerified::GetVerifiedModders()
     {
-        auto webRequest = UnityEngine::Networking::UnityWebRequest::Get(il2cpp_utils::createcsstr("https://github.com/RusJJ/GorillaFriends/raw/main/gorillas.verified"));
+        auto webRequest = UnityEngine::Networking::UnityWebRequest::Get(il2cpp_utils::newcsstr("https://github.com/RusJJ/GorillaFriends/raw/main/gorillas.verified"));
         co_yield reinterpret_cast<System::Collections::IEnumerator*>(webRequest->SendWebRequest());
         auto data = webRequest->get_downloadHandler()->get_data();
         auto responsecs = System::Text::Encoding::get_Default()->GetString(data);
         auto response = to_utf8(csstrtostr(responsecs));
-        Log::INFO("%s", response.c_str());
+        Log::INFO(response.c_str());
 
         std::istringstream instring(response);
         std::string line;

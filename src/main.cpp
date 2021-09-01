@@ -38,15 +38,6 @@ Configuration& getConfig() {
     return config;
 }
 
-/*
-// Returns a logger, useful for printing debug messages
-Logger& getLogger() {
-    static Logger* logger = new Logger(modInfo);
-    myLogger = logger;
-    return *logger;
-}
-*/
-
 // Called at the early stages of game loading
 extern "C" void setup(ModInfo& info) {
     info.id = ID;
@@ -64,13 +55,12 @@ MAKE_HOOK_MATCH(Player_start, &GorillaLocomotion::Player::Awake, void, GorillaLo
 {
     //GRAB LIST OF VERIFIED USER IDS
    Log::INFO("Making WebVerified Object");
-    auto go = UnityEngine::GameObject::New_ctor(il2cpp_utils::createcsstr("WebVerified"));
+    auto go = UnityEngine::GameObject::New_ctor(il2cpp_utils::newcsstr("WebVerified"));
     webVerified = go->AddComponent<GorillaFriends::WebVerified*>();
     webVerified->StartCoroutine(reinterpret_cast<System::Collections::IEnumerator*>(custom_types::Helpers::CoroutineHelper::New(webVerified->GetVerifiedModders())));
     Player_start(self);
 }
 
-bool friendsInitialised = false;
 UnityEngine::GameObject* m_pScoreboardFriendBtn = nullptr;
 GorillaFriends::FriendButton* m_pFriendButtonController = nullptr;
 
@@ -97,32 +87,24 @@ MAKE_HOOK_MATCH(GSB_Awake, &GlobalNamespace::GorillaScoreBoard::Awake, void, Glo
         if(to_utf8(csstrtostr(t->get_name())) == "Mute Button")
         {
             Log::INFO("found mute button");
-            m_pScoreboardFriendBtn = UnityEngine::GameObject::Instantiate(t->get_gameObject());
+
+            m_pScoreboardFriendBtn = UnityEngine::GameObject::Instantiate(t->get_gameObject()); // clone our buttom from the mute button
             if(m_pScoreboardFriendBtn != nullptr)
             {
-                t->set_localPosition(UnityEngine::Vector3(3.8f, 0.0f, 0.0f));
-                m_pScoreboardFriendBtn->get_transform()->set_parent(self->scoreBoardLinePrefab->get_transform());
-                m_pScoreboardFriendBtn->get_transform()->set_name(il2cpp_utils::createcsstr("FriendButton"));
+                t->set_localPosition(UnityEngine::Vector3(3.8f, 0.0f, 0.0f)); // move mut button sideways a tad
+
+                m_pScoreboardFriendBtn->get_transform()->set_parent(self->scoreBoardLinePrefab->get_transform()); // set out parent to be the line we're on all positions and scale will be an offset to parents transform
+                m_pScoreboardFriendBtn->get_transform()->set_name(il2cpp_utils::newcsstr("FriendButton"));
                 m_pScoreboardFriendBtn->get_transform()->set_localPosition(UnityEngine::Vector3(17.5f, 0.0f, 0.0f));
                 auto controller = m_pScoreboardFriendBtn->GetComponent<GlobalNamespace::GorillaPlayerLineButton*>();
                 if(controller != nullptr)
                 {
                     m_pFriendButtonController = m_pScoreboardFriendBtn->AddComponent<GorillaFriends::FriendButton*>();
-                    //m_pFriendButtonController->parentLine = controller->parentLine;
-                    m_pFriendButtonController->parentLine = parentLine;
-                    m_pFriendButtonController->offText = il2cpp_utils::createcsstr("ADD\nFRIEND");
-                    m_pFriendButtonController->onText = il2cpp_utils::createcsstr("FRIEND!");
-                    //m_pFriendButtonController->myText = controller->myText;
-                    m_pFriendButtonController->myText = controller->myText;
-                    m_pFriendButtonController->myText->set_text(m_pFriendButtonController->offText);
-                    //m_pFriendButtonController->offMaterial = controller->offMaterial;
-                    m_pFriendButtonController->offMaterial = controller->_get_offMaterial();
-					/* Maybe we need to instantiate onMaterial, please check */
-                    //m_pFriendButtonController->onMaterial = controller->onMaterial;
-                    m_pFriendButtonController->onMaterial = UnityEngine::Material::New_ctor(controller->_get_onMaterial());
-                    m_pFriendButtonController->onMaterial->set_color(UnityEngine::Color(0.8f, 0.5f, 0.9f, 1.0f));
 
-                    UnityEngine::GameObject::Destroy(controller);
+                    //creating the materials
+                    m_pFriendButtonController->notFrMaterial = UnityEngine::Material::New_ctor(controller->offMaterial);
+                    m_pFriendButtonController->isFrMaterial = UnityEngine::Material::New_ctor(controller->onMaterial);
+                    m_pFriendButtonController->isFrMaterial->set_color(UnityEngine::Color(0.8f, 0.5f, 0.9f, 1.0f));
                 }
             }
 			// We're added a Friend Button! Break our "for loop"
@@ -155,4 +137,8 @@ extern "C" void load() {
 
     Log::INFO("registering custom types");
     custom_types::Register::AutoRegister();
+
+    // creating the button text string first
+    GorillaFriends::FriendButton::isFriendStr = il2cpp_utils::newcsstr("FRIEND!");
+    GorillaFriends::FriendButton::notFriendStr = il2cpp_utils::newcsstr("ADD\nFRIEND");
 }

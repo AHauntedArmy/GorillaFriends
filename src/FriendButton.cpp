@@ -6,6 +6,7 @@
 #include "UnityEngine/GameObject.hpp"
 
 #include "GlobalNamespace/GorillaTriggerColliderHandIndicator.hpp"
+#include "GlobalNamespace/GorillaPlayerLineButton.hpp"
 #include "GlobalNamespace/GorillaTagger.hpp"
 #include "GlobalNamespace/VRRig.hpp"
 
@@ -18,8 +19,8 @@
 
 DEFINE_TYPE(GorillaFriends, FriendButton);
 
-UnityEngine::Color m_clrFriendColor = UnityEngine::Color(0.8f, 0.5f, 0.9f, 1.0f);
-UnityEngine::Color m_clrVerifiedColor = UnityEngine::Color(0.5f, 1.0f, 0.5f, 1.0f);
+UnityEngine::Color friendColour = UnityEngine::Color(0.8f, 0.5f, 0.9f, 1.0f);
+UnityEngine::Color verifiedColour = UnityEngine::Color(0.5f, 1.0f, 0.5f, 1.0f);
 
 static bool IsVerified(std::string userID)
 {
@@ -33,12 +34,12 @@ static bool IsVerified(std::string userID)
     return false;
 }
 
-static bool IsFriend(std::string userID)
+static bool IsFriend(const std::string& userID)
 {
-    return (UnityEngine::PlayerPrefs::GetInt(il2cpp_utils::createcsstr(userID + "_friend"), 0) != 0);
+    return (UnityEngine::PlayerPrefs::GetInt(il2cpp_utils::newcsstr(userID + "_friend"), 0) != 0);
 }
 
-static bool IsInFriendList(std::string userID)
+static bool IsInFriendList(const std::string& userID)
 {
     int listsize = GorillaFriends::WebVerified::m_listCurrentSessionFriends.size();
     for(int i = 0; i < listsize; ++i)
@@ -49,245 +50,137 @@ static bool IsInFriendList(std::string userID)
 }
 
 namespace GorillaFriends{
-    Il2CppString* FriendButton::onText = nullptr;
-    Il2CppString* FriendButton::offText = nullptr;
-    UnityEngine::Material* FriendButton::onMaterial = nullptr;
-    UnityEngine::Material* FriendButton::offMaterial = nullptr;
+
+    //initalizing static variables
+    Il2CppString* FriendButton::isFriendStr = nullptr;
+    Il2CppString* FriendButton::notFriendStr = nullptr;
+    UnityEngine::Material* FriendButton::isFrMaterial = nullptr;
+    UnityEngine::Material* FriendButton::notFrMaterial = nullptr;
+
+    void FriendButton::Awake()
+    {
+        nextUpdate = 0.0f;
+        touchTime = 0.0f;
+
+        myText = nullptr;
+        meshRenderer = nullptr;
+        playerLineText = nullptr;
+        playerRigText = nullptr;
+    }
 
     void FriendButton::Start()
     {
+        // custom types doesn't work with serialization, so grabbing everything in here
+        GlobalNamespace::GorillaPlayerLineButton* muteBtnScript = get_gameObject()->GetComponent<GlobalNamespace::GorillaPlayerLineButton*>();
+        if(muteBtnScript != nullptr){
+            myText = muteBtnScript->myText; // our text component
+            parentLine = muteBtnScript->parentLine; // line this is attached to
+
+            UnityEngine::GameObject::Destroy(muteBtnScript); // don't need this anymore
+
+            if(parentLine != nullptr){
+                userID = to_utf8(csstrtostr(parentLine->linePlayer->get_UserId())); // save the usersID
+                playerLineText = parentLine->playerName; // players name component on the player line
+                playerRigText = parentLine->playerVRRig->playerText; // players name component on the players vrrig
+
+                // if this is local player, disable button & script
+                if(parentLine->linePlayer->IsLocal) get_gameObject()->SetActive(false);
+            }
+        }
+
         meshRenderer = get_gameObject()->GetComponent<UnityEngine::MeshRenderer*>();
-        parentLine = GetComponentInParent<GlobalNamespace::GorillaPlayerScoreboardLine*>();
-    }
 
-    void FriendButton::Update()
-    {
-        Log::INFO("Checking whether to run or not");
-        if(nextUpdate > UnityEngine::Time::get_time()) return;
-
-        if(parentLine == nullptr){
-            //Log::WARNING("parentLine is nullptr");
-            return;
-        }
-
-        GlobalNamespace::VRRig* playersVRRig = parentLine->_get_playerVRRig();
-        Photon::Realtime::Player* linesPlayer = parentLine->_get_linePlayer();
-
-        if(playersVRRig == nullptr){
-            Log::WARNING("parentLine->playerVRRig is nullptr");
-            return;
-        } 
-        
-        if(linesPlayer == nullptr){
-            Log::WARNING("parentLine->linePlayer == nullptr");
-            return;
-        }
-
-        nextUpdate = UnityEngine::Time::get_time() + 0.5f;
-
-        std::string userID = to_utf8(csstrtostr(linesPlayer->get_UserId()));
-        UnityEngine::UI::Text* playersName = parentLine->_get_playerName();
-
-        if(!initialized)
-        {
-            Log::INFO("Wasn't initialized");
-            initialized = true;
-
-            //if(IsVerified(to_utf8(csstrtostr(parentLine->linePlayer->UserId))))
-            if(IsVerified(userID))
-            {
-                Log::INFO("Was verified");
-                //parentLine->playerName->set_color(m_clrVerifiedColor);
-                playersName->set_color(m_clrVerifiedColor);
-                //parentLine->playerVRRig->playerText->set_color(m_clrVerifiedColor);
-                playersVRRig->_get_playerText()->set_color(m_clrVerifiedColor);
-            }
-
-            //if(parentLine->linePlayer->IsLocal) get_gameObject()->SetActive(false);
-            if(linesPlayer->_get_IsLocal()) get_gameObject()->SetActive(false);
-            else
-            {
-                Log::INFO("Checking if player is a freind");
-                //if(IsFriend(to_utf8(csstrtostr(parentLine->linePlayer->UserId))))
-                if(IsFriend(userID))
-                {
-                    Log::INFO("Was friend");
-                    //if(!IsInFriendList(to_utf8(csstrtostr(parentLine->linePlayer->UserId)))) GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(to_utf8(csstrtostr(parentLine->linePlayer->UserId)));
-                    if(!IsInFriendList(userID)) WebVerified::m_listCurrentSessionFriends.push_back(userID);
-                    //parentLine->playerName->set_color(m_clrFriendColor);
-                    playersName->set_color(m_clrFriendColor);
-                    isOn = true;
-                    //myText->set_text(onText);
-                    UpdateColor();
-                }
-                else
-                {
-                    Log::INFO("Wasn't friend");
-                }
-            }
-            return;
-        }
-
-        //if(!parentLine->linePlayer->IsLocal && isOn != IsInFriendList(to_utf8(csstrtostr(parentLine->linePlayer->UserId))))
-        if(linesPlayer->_get_IsLocal() && isOn != IsInFriendList(userID))
-        {
-            isOn = !isOn;
-            UpdateColor();
-            if(!isOn)
-            {
-                //if(IsVerified(to_utf8(csstrtostr(parentLine->linePlayer->UserId))))
-                if(IsVerified(userID))
-                {
-                    //parentLine->playerName->set_color(m_clrVerifiedColor);
-                    playersName->set_color(m_clrVerifiedColor);
-                    //parentLine->playerVRRig->playerText->set_color(m_clrVerifiedColor);
-                    playersVRRig->_get_playerText()->set_color(m_clrVerifiedColor);
-                }
-                else
-                {
-                    //parentLine->playerName->set_color(UnityEngine::Color::get_white());
-                    playersName->set_color(UnityEngine::Color::get_white());
-                    //parentLine->playerVRRig->playerText->set_color(UnityEngine::Color::get_white());
-                    playersVRRig->_get_playerText()->set_color(UnityEngine::Color::get_white());
-                }
-                //myText->set_text(offText);
-            }
-            else
-            {
-                //parentLine->playerName->set_color(m_clrFriendColor);
-                playersName->set_color(m_clrFriendColor);
-                //parentLine->playerVRRig->playerText->set_color(m_clrFriendColor);
-                playersVRRig->_get_playerText()->set_color(m_clrFriendColor);
-                //myText->set_text(onText);
-            }
-        }
+        // if user currently isn't in friends list, add it
+        if(IsFriend(userID)) GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(userID);
+        UpdateColour();
     }
 
     void FriendButton::OnTriggerEnter(UnityEngine::Collider* collider)
     {
         if(touchTime > UnityEngine::Time::get_time()) return;
         touchTime = UnityEngine::Time::get_time() + 0.25;
-        GlobalNamespace::GorillaTriggerColliderHandIndicator* component = collider->GetComponent<GlobalNamespace::GorillaTriggerColliderHandIndicator*>();
-        if(component == nullptr) return;
 
-        isOn = !isOn;
-        UpdateColor();
-        //GlobalNamespace::GorillaTagger::get_Instance()->StartVibration(component->isLeftHand, GlobalNamespace::GorillaTagger::get_Instance()->tapHapticStrength / 2.0f, GlobalNamespace::GorillaTagger::get_Instance()->tapHapticDuration);
+        bool refAreNull = false;
+        GlobalNamespace::GorillaTriggerColliderHandIndicator* component = collider->GetComponent<GlobalNamespace::GorillaTriggerColliderHandIndicator*>();
         GlobalNamespace::GorillaTagger* gtInstance = GlobalNamespace::GorillaTagger::get_Instance();
-        if(gtInstance == nullptr){
-            Log::WARNING("OnTriggerEnter > gorillataggerinstance = nullptr");
-            return;
-        }
+        if(component == nullptr) { Log::WARNING("FriendButton::OnTriggerEnter > component = nullptr"); refAreNull = true; }
+        if(gtInstance == nullptr){ Log::WARNING("FriendButton::OnTriggerEnter > gorillataggerinstance = nullptr"); refAreNull = true; }
+        if(refAreNull) return;
+
+        // vibrate the controllers
         gtInstance->StartVibration(component->_get_isLeftHand(), gtInstance->_get_tapHapticStrength() / 2.0f, gtInstance->_get_tapHapticDuration());
 
-        if(parentLine == nullptr){
-            Log::WARNING("OnTriggerEnter > parentLine = nullptr");
-            return;
+        // if not already a friend, add them
+        if(!IsFriend(userID)){
+            GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(userID);
+            UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::newcsstr(userID + "_friend"), 1);
         }
 
-        Photon::Realtime::Player* linesPlayer = parentLine->_get_linePlayer();
-        UnityEngine::UI::Text* playersName = parentLine->_get_playerName();
-
-        if(linesPlayer == nullptr){
-            Log::WARNING("OnTriggerEnter > parentlines player = nullptr");
-            return;
-        }
-
-        if(playersName == nullptr){
-            Log::WARNING("OnTriggerEnter > parentlines playername = nullptr");
-            return;
-        }
-
-        std::string userID = to_utf8(csstrtostr(linesPlayer->get_UserId()));
-
-        if(isOn)
-        {
-            //GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(to_utf8(csstrtostr(parentLine->linePlayer->UserId)));
-            WebVerified::m_listCurrentSessionFriends.push_back(userID);
-            //UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::createcsstr(to_utf8(csstrtostr(parentLine->linePlayer->UserId)) + "_friend"), 1);
-            UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::createcsstr(userID + "_friend"), 1);
-            //parentLine->playerName->set_color(m_clrFriendColor);
-            Log::INFO("adding friend > set player name color");
-            playersName->set_color(m_clrFriendColor);
-            //myText->set_text(onText);
-            return;
-        }
-
-        // change taken from killmans pull request
-        auto it = GorillaFriends::WebVerified::m_listCurrentSessionFriends.begin();
-        auto end = GorillaFriends::WebVerified::m_listCurrentSessionFriends.end();
-        while( it != end )
-        {
-            //if(*it == to_utf8(csstrtostr(parentLine->linePlayer->UserId)))
-            if(*it == userID)
+        // otherwise, remove them from friends list
+        else {
+            // change taken from killmans pull request
+            auto it = GorillaFriends::WebVerified::m_listCurrentSessionFriends.begin();
+            auto end = GorillaFriends::WebVerified::m_listCurrentSessionFriends.end();
+            while( it != end )
             {
-                GorillaFriends::WebVerified::m_listCurrentSessionFriends.erase(it);
-                break;
+                if(*it == userID)
+                {
+                    GorillaFriends::WebVerified::m_listCurrentSessionFriends.erase(it);
+                    break;
+                }
+                ++it;
             }
-            ++it;
+
+            UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::newcsstr(userID + "_friend"), 0);
         }
 
-        /*
-        int listsize = GorillaFriends::WebVerified::m_listCurrentSessionFriends.size();
-        for(int i = 0; i < listsize; ++i)
-        {
-            if(GorillaFriends::WebVerified::m_listCurrentSessionFriends[i] == to_utf8(csstrtostr(parentLine->linePlayer->UserId)))
-            {
-                GorillaFriends::WebVerified::m_listCurrentSessionFriends.erase(GorillaFriends::WebVerified::m_listCurrentSessionFriends.begin() + i - 1);
+        UpdateColour();
+    }
+
+    void FriendButton::UpdateColour()
+    {
+        Log::D_INFO("attempt to update colour");
+
+        bool refAreNull = false;
+
+        // if any of these happen to be null something is broken so do nothing
+        if(myText == nullptr) { Log::WARNING("FriendButton::UpdateColour > myText = nullptr"); refAreNull = true; }
+        if(meshRenderer == nullptr) { Log::WARNING("FriendButton::UpdateColour > meshRenderer = nullptr"); refAreNull = true; }
+        if(playerLineText == nullptr) { Log::WARNING("FriendButton::UpdateColour > playerLineText = nullptr"); refAreNull = true; }
+        if(playerRigText == nullptr) { Log::WARNING("FriendButton::UpdateColour > playerRigText = nullptr"); refAreNull = true; }
+
+        if(refAreNull) return;
+
+        if(IsInFriendList(userID)){
+            myText->set_text(isFriendStr);
+            
+            meshRenderer->set_material(isFrMaterial);
+            playerLineText->set_color(friendColour);
+            playerRigText->set_color(friendColour);
+
+        }
+        else {
+            myText->set_text(notFriendStr);
+            meshRenderer->set_material(notFrMaterial);
+
+            if(IsVerified(userID)){
+                playerLineText->set_color(verifiedColour);
+                playerRigText->set_color(verifiedColour);
+                return;
             }
-        }
-        */
 
-        GlobalNamespace::VRRig* playersVRRig = parentLine->_get_playerVRRig();
-        if(playersVRRig == nullptr){
-           Log::WARNING("OnTriggerEnter > parentlines playerVRRig = nullptr");
-           return;
-       }
-
-        //UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::createcsstr(to_utf8(csstrtostr(parentLine->linePlayer->UserId)) + "_friend"), 0);
-        UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::createcsstr(userID + "_friend"), 0);
-        //myText->set_text(offText);
-
-        //if(IsVerified(to_utf8(csstrtostr(parentLine->linePlayer->UserId))))
-        if(IsVerified(userID))
-        {
-            //parentLine->playerName->set_color(m_clrVerifiedColor);
-            Log::INFO("player is verified > set playername colour");
-            playersName->set_color(m_clrVerifiedColor);
-            //parentLine->playerVRRig->playerText->set_color(m_clrVerifiedColor);
-            Log::INFO("player is verified > set player vrrig name colour");
-            playersVRRig->_get_playerText()->set_color(m_clrVerifiedColor);
-        }
-        else
-        {
-            //parentLine->playerName->set_color(UnityEngine::Color::get_white());
-            Log::INFO("player is verified > set playername colour");
-            playersName->set_color(UnityEngine::Color::get_white());
-            //parentLine->playerVRRig->playerText->set_color(UnityEngine::Color::get_white());
-            Log::INFO("player is not verified > set player vrrig name colour");
-            playersVRRig->_get_playerText()->set_color(UnityEngine::Color::get_white());
+            playerLineText->set_color(UnityEngine::Color::get_white());
+            playerRigText->set_color(UnityEngine::Color::get_white());
         }
     }
 
-    void FriendButton::UpdateColor()
+    void FriendButton::OnDisable()
     {
-        if(isOn)
-        {
-            if(meshRenderer != nullptr) meshRenderer->set_material(onMaterial);
-            if(myText == nullptr){
-                Log::WARNING("myText is nullptr??");
-                return;
-            }   
-            myText->set_text(onText);
-        }
-        else
-        {
-            if(meshRenderer != nullptr) meshRenderer->set_material(offMaterial);
-            if(myText == nullptr){
-                Log::WARNING("myText is nullptr??");
-                return;
-            }   
-            myText->set_text(offText);
-        }
+        Log::D_INFO("friend button was disabled");
+    }
+
+    void FriendButton::OnDestroy()
+    {
+        Log::D_INFO("friend button was destroyed");
     }
 }

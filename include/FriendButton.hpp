@@ -12,34 +12,30 @@
 #include "GlobalNamespace/GorillaPlayerScoreboardLine.hpp"
 
 DECLARE_CLASS_CODEGEN(GorillaFriends, FriendButton, UnityEngine::MonoBehaviour,
-    //DECLARE_INSTANCE_FIELD_DEFAULT(GlobalNamespace::GorillaPlayerScoreboardLine*, parentLine, nullptr);
     DECLARE_INSTANCE_FIELD(GlobalNamespace::GorillaPlayerScoreboardLine*, parentLine);
-    //DECLARE_INSTANCE_FIELD_DEFAULT(bool, isOn, false);
-    DECLARE_INSTANCE_FIELD(bool, isOn);
-    //DECLARE_STATIC_FIELD(Il2CppString*, offText);
-    //DECLARE_STATIC_FIELD(Il2CppString*, onText);
-    //DECLARE_INSTANCE_FIELD_DEFAULT(UnityEngine::UI::Text*, myText, nullptr);
     DECLARE_INSTANCE_FIELD(UnityEngine::UI::Text*, myText);
-    //DECLARE_INSTANCE_FIELD_DEFAULT(float, touchTime, 0.0f);
     DECLARE_INSTANCE_FIELD(float, touchTime);
-    //DECLARE_STATIC_FIELD(UnityEngine::Material*, offMaterial);
-    //DECLARE_STATIC_FIELD(UnityEngine::Material*, onMaterial);
-    //DECLARE_INSTANCE_FIELD_DEFAULT(UnityEngine::MeshRenderer*, meshRenderer, nullptr);
     DECLARE_INSTANCE_FIELD(UnityEngine::MeshRenderer*, meshRenderer);
-    //DECLARE_INSTANCE_FIELD_DEFAULT(bool, initialized, false);
     DECLARE_INSTANCE_FIELD(bool, initialized);
-    //DECLARE_INSTANCE_FIELD_DEFAULT(float, nextUpdate, 0.0f);
     DECLARE_INSTANCE_FIELD(float, nextUpdate);
     
+    DECLARE_INSTANCE_METHOD(void, Awake);
     DECLARE_INSTANCE_METHOD(void, Start);
-    DECLARE_INSTANCE_METHOD(void, Update);
-    DECLARE_INSTANCE_METHOD(void, UpdateColor);
+    DECLARE_INSTANCE_METHOD(void, OnDestroy);
+    DECLARE_INSTANCE_METHOD(void, OnDisable);
     DECLARE_INSTANCE_METHOD(void, OnTriggerEnter, UnityEngine::Collider* collider);
 
     // c++ implementation, don't need these as c# types
     public:
-    static Il2CppString* offText;
-    static Il2CppString* onText;
-    static UnityEngine::Material* offMaterial;
-    static UnityEngine::Material* onMaterial;
+    static Il2CppString* isFriendStr;
+    static Il2CppString* notFriendStr;
+    static UnityEngine::Material* isFrMaterial;
+    static UnityEngine::Material* notFrMaterial;
+
+    std::string userID;
+
+    UnityEngine::UI::Text* playerLineText;
+    UnityEngine::UI::Text* playerRigText;
+
+    void UpdateColour();
 )
