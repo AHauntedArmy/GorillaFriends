@@ -59,8 +59,10 @@ namespace GorillaFriends{
 
     void FriendButton::Awake()
     {
-        nextUpdate = 0.0f;
+        updateTime = UnityEngine::Time::get_time() + 0.5f;
         touchTime = 0.0f;
+
+        amFriend = false;
 
         myText = nullptr;
         meshRenderer = nullptr;
@@ -89,9 +91,25 @@ namespace GorillaFriends{
         }
 
         meshRenderer = get_gameObject()->GetComponent<UnityEngine::MeshRenderer*>();
+        std::string myLoguserIdLog = "userID= " + userID;
+        Log::D_INFO(myLoguserIdLog.c_str());
+
+        // check if the usersID already exists in the friends list
+        bool idExists = false;
+        size_t listLength = GorillaFriends::WebVerified::m_listCurrentSessionFriends.size();
+        for(size_t pos = 0; pos < listLength; pos++){
+            if(GorillaFriends::WebVerified::m_listCurrentSessionFriends[pos] == userID) {
+                idExists = true;
+                amFriend = true;
+                break;
+            }
+        }
 
         // if user currently isn't in friends list, add it
-        if(IsFriend(userID)) GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(userID);
+        if(!idExists && IsFriend(userID)){
+             GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(userID);
+             amFriend = true;
+        }
         UpdateColour();
     }
 
@@ -114,6 +132,7 @@ namespace GorillaFriends{
         if(!IsFriend(userID)){
             GorillaFriends::WebVerified::m_listCurrentSessionFriends.push_back(userID);
             UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::newcsstr(userID + "_friend"), 1);
+            amFriend = true;
         }
 
         // otherwise, remove them from friends list
@@ -132,6 +151,7 @@ namespace GorillaFriends{
             }
 
             UnityEngine::PlayerPrefs::SetInt(il2cpp_utils::newcsstr(userID + "_friend"), 0);
+            amFriend = false;
         }
 
         UpdateColour();
@@ -148,10 +168,10 @@ namespace GorillaFriends{
         if(meshRenderer == nullptr) { Log::WARNING("FriendButton::UpdateColour > meshRenderer = nullptr"); refAreNull = true; }
         if(playerLineText == nullptr) { Log::WARNING("FriendButton::UpdateColour > playerLineText = nullptr"); refAreNull = true; }
         if(playerRigText == nullptr) { Log::WARNING("FriendButton::UpdateColour > playerRigText = nullptr"); refAreNull = true; }
-
         if(refAreNull) return;
 
-        if(IsInFriendList(userID)){
+        // check state and set colours, purple for friend, white for not  friend
+        if(amFriend){
             myText->set_text(isFriendStr);
             
             meshRenderer->set_material(isFrMaterial);
@@ -163,6 +183,7 @@ namespace GorillaFriends{
             myText->set_text(notFriendStr);
             meshRenderer->set_material(notFrMaterial);
 
+            // if user is verified make the names green instead of white
             if(IsVerified(userID)){
                 playerLineText->set_color(verifiedColour);
                 playerRigText->set_color(verifiedColour);
@@ -174,13 +195,19 @@ namespace GorillaFriends{
         }
     }
 
-    void FriendButton::OnDisable()
+    // for the other scoreboards to update there state, bad way to do it but i'm lazy, should really make ontriggerenter update relevant scoreboardlines
+    void FriendButton::Update()
     {
-        Log::D_INFO("friend button was disabled");
-    }
+        float time = UnityEngine::Time::get_time();
+        if(updateTime > time) return;
+        updateTime = time + 0.5f;
 
-    void FriendButton::OnDestroy()
-    {
-        Log::D_INFO("friend button was destroyed");
+        //checks if state has changed
+        if(amFriend != IsInFriendList(userID))
+        {
+            //update state
+            amFriend = !amFriend;
+            UpdateColour();
+        }
     }
 }

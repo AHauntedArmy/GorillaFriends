@@ -73,8 +73,7 @@ MAKE_HOOK_MATCH(GSB_Awake, &GlobalNamespace::GorillaScoreBoard::Awake, void, Glo
         GSB_Awake(self);
         return;
     }
-	// I think we dont need it here:
-    // GorillaFriends::WebVerified::m_listCurrentSessionFriends.clear();
+
     Log::INFO("GSB_AWAKE");
     auto transform = self->scoreBoardLinePrefab->get_transform();
     GlobalNamespace::GorillaPlayerScoreboardLine* parentLine = transform->get_gameObject()->GetComponent<GlobalNamespace::GorillaPlayerScoreboardLine*>();
@@ -118,6 +117,7 @@ MAKE_HOOK_MATCH(GSB_Awake, &GlobalNamespace::GorillaScoreBoard::Awake, void, Glo
 
 MAKE_HOOK_MATCH(PN_Disconnect, &Photon::Pun::PhotonNetwork::Disconnect, void)
 {
+    Log::D_INFO("photonnetwork disconnect hook called, clearing friendslist");
     GorillaFriends::WebVerified::m_listCurrentSessionFriends.clear();
     PN_Disconnect();
 }

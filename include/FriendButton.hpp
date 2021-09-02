@@ -14,15 +14,11 @@
 DECLARE_CLASS_CODEGEN(GorillaFriends, FriendButton, UnityEngine::MonoBehaviour,
     DECLARE_INSTANCE_FIELD(GlobalNamespace::GorillaPlayerScoreboardLine*, parentLine);
     DECLARE_INSTANCE_FIELD(UnityEngine::UI::Text*, myText);
-    DECLARE_INSTANCE_FIELD(float, touchTime);
     DECLARE_INSTANCE_FIELD(UnityEngine::MeshRenderer*, meshRenderer);
-    DECLARE_INSTANCE_FIELD(bool, initialized);
-    DECLARE_INSTANCE_FIELD(float, nextUpdate);
     
     DECLARE_INSTANCE_METHOD(void, Awake);
     DECLARE_INSTANCE_METHOD(void, Start);
-    DECLARE_INSTANCE_METHOD(void, OnDestroy);
-    DECLARE_INSTANCE_METHOD(void, OnDisable);
+    DECLARE_INSTANCE_METHOD(void, Update);
     DECLARE_INSTANCE_METHOD(void, OnTriggerEnter, UnityEngine::Collider* collider);
 
     // c++ implementation, don't need these as c# types
@@ -33,6 +29,9 @@ DECLARE_CLASS_CODEGEN(GorillaFriends, FriendButton, UnityEngine::MonoBehaviour,
     static UnityEngine::Material* notFrMaterial;
 
     std::string userID;
+    float updateTime;
+    float touchTime;
+    bool amFriend;
 
     UnityEngine::UI::Text* playerLineText;
     UnityEngine::UI::Text* playerRigText;
