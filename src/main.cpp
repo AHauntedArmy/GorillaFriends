@@ -139,6 +139,6 @@ extern "C" void load() {
     custom_types::Register::AutoRegister();
 
     // creating the button text string first
-    GorillaFriends::FriendButton::isFriendStr = il2cpp_utils::newcsstr("FRIEND!");
-    GorillaFriends::FriendButton::notFriendStr = il2cpp_utils::newcsstr("ADD\nFRIEND");
+    GorillaFriends::FriendButton::isFriendStr = il2cpp_utils::newcsstr<il2cpp_utils::CreationType::Manual>("FRIEND!");
+    GorillaFriends::FriendButton::notFriendStr = il2cpp_utils::newcsstr<il2cpp_utils::CreationType::Manual>("ADD\nFRIEND");
 }

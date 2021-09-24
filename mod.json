@@ -19,8 +19,8 @@
     "dependencies": [
         {
             "id": "monkecodegen",
-            "version": ">=0.8.0",
-            "downloadIfMissing": "https://github.com/RedBrumbler/MonkeCodegen/releases/download/v0.8.0/MonkeCodegen.qmod"
+            "version": ">=0.9.0",
+            "downloadIfMissing": "https://github.com/RedBrumbler/MonkeCodegen/releases/download/v0.9.0/MonkeCodegen.qmod"
         }
     ]
 }
